@@ -1,0 +1,14 @@
+[Unit]
+Description=Shipping Label Printer
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/opt/labelprinter
+ExecStart=/opt/labelprinter/venv/bin/gunicorn -w 2 -b 0.0.0.0:8080 run:app
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/labelprinter/.env
+
+[Install]
+WantedBy=multi-user.target
