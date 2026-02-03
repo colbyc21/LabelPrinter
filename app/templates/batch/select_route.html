@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Select Route - Label Printer{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Batch Print</h2>
+    <p>Select a route and department to review and print labels.</p>
+</div>
+
+{% if routes %}
+<div class="data-table route-table" style="max-width: 550px;">
+    <table class="table table-sm mb-0">
+        <thead>
+            <tr>
+                <th>Route</th>
+                <th>Department</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for route, depts in routes.items() %}
+            <tr>
+                <td rowspan="{{ depts|length + 1 }}" class="align-middle">
+                    <span class="route-num">{{ route }}</span>
+                </td>
+                <td class="align-middle"><em class="text-muted">All Departments</em></td>
+                <td class="align-middle">
+                    <a href="{{ url_for('batch.review_labels', route=route) }}" class="btn btn-brand btn-sm">Select</a>
+                </td>
+            </tr>
+            {% for dept in depts %}
+            <tr>
+                <td class="align-middle"><span class="dept-badge">{{ dept }}</span></td>
+                <td class="align-middle">
+                    <a href="{{ url_for('batch.review_labels', route=route, dept=dept) }}" class="btn btn-brand-outline btn-sm">Select</a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <p>No routes available.</p>
+</div>
+{% endif %}
+{% endblock %}

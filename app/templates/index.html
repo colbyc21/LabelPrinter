@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Home - Label Printer{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Shipping Label Printer</h2>
+    <p>Print shipping labels for warehouse routes or individual customers.</p>
+</div>
+
+{% if not session.get('printer') %}
+<div class="alert alert-warning mb-4">
+    Select a printer from the navbar to get started.
+</div>
+{% endif %}
+
+<div class="row g-4 mt-1">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="card-icon blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="22" height="12" rx="2"/><path d="M1 10h22"/><path d="M7 6V2h10v4"/></svg>
+                </div>
+                <h5 class="card-title">Batch Print</h5>
+                <p class="card-text">Print labels for a full route or department. Labels print in stop order for each department.</p>
+                <a href="{{ url_for('batch.select_route') }}" class="btn btn-brand">Batch Mode</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="card-icon green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <h5 class="card-title">Ad Hoc Print</h5>
+                <p class="card-text">Search for a customer by name or number and print individual labels on demand.</p>
+                <a href="{{ url_for('adhoc.search') }}" class="btn btn-brand">Ad Hoc Mode</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="card-icon gray">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <h5 class="card-title">Test Print</h5>
+                <p class="card-text">Send a test label to the selected printer to verify connectivity and alignment.</p>
+                <form method="POST" action="{{ url_for('main.test_print') }}">
+                    <button type="submit" class="btn btn-brand-outline">Send Test Label</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

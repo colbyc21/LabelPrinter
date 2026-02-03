@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Printer Admin - Label Printer{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Printer Admin</h2>
+    <p>Manage configured Zebra printers. <a href="{{ url_for('admin.logout') }}" class="text-muted" style="font-size:.85rem;">Logout</a></p>
+</div>
+
+<div class="admin-add-form mb-4">
+    <div class="form-label">Add New Printer</div>
+    <form method="POST" action="{{ url_for('admin.printers_add') }}" class="d-flex gap-2 mt-2">
+        <input type="text" name="name" class="form-control" placeholder="Printer name" required>
+        <input type="text" name="ip" class="form-control" placeholder="IP address" required>
+        <button type="submit" class="btn btn-brand" style="white-space:nowrap;">Add Printer</button>
+    </form>
+</div>
+
+{% if printers %}
+<div class="data-table" style="max-width: 700px;">
+    <table class="table table-sm mb-0">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>IP Address</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in printers %}
+            <tr>
+                <td>
+                    <span class="printer-display-{{ loop.index }} fw-600">{{ p.name }}</span>
+                    <form method="POST" action="{{ url_for('admin.printers_edit') }}"
+                          class="printer-edit-{{ loop.index }} d-none d-inline-flex gap-2">
+                        <input type="hidden" name="old_name" value="{{ p.name }}">
+                        <input type="text" name="name" value="{{ p.name }}" class="form-control form-control-sm" style="width: 150px;" required>
+                </td>
+                <td>
+                    <span class="printer-display-{{ loop.index }}">{{ p.ip }}</span>
+                        <input type="text" name="ip" value="{{ p.ip }}" class="form-control form-control-sm" style="width: 150px;" required>
+                </td>
+                <td>
+                    <span class="printer-display-{{ loop.index }}">
+                        <button type="button" class="btn btn-sm btn-brand-outline"
+                                onclick="toggleEdit({{ loop.index }})">Edit</button>
+                    </span>
+                        <button type="submit" class="btn btn-sm btn-brand">Save</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="toggleEdit({{ loop.index }})">Cancel</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin.printers_delete') }}" class="d-inline printer-display-{{ loop.index }}">
+                        <input type="hidden" name="name" value="{{ p.name }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="6" rx="1"/><rect x="2" y="8" width="20" height="8" rx="1"/><rect x="6" y="16" width="12" height="6" rx="1"/><line x1="6" y1="11" x2="10" y2="11"/></svg>
+    <p>No printers configured yet. Add one above.</p>
+</div>
+{% endif %}
+{% endblock %}

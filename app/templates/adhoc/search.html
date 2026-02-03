@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Ad Hoc Print - Label Printer{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Ad Hoc Print</h2>
+    <p>Search by customer name or number to print individual labels.</p>
+</div>
+
+<form method="GET" action="{{ url_for('adhoc.search') }}" class="search-bar mb-4">
+    <input type="text" name="q" class="form-control" placeholder="Customer name or number..."
+           value="{{ term }}" autofocus>
+    <button type="submit" class="btn btn-brand">Search</button>
+</form>
+
+{% if results %}
+{% if source == 'oneoff' %}
+<div class="alert alert-info mb-3">
+    No picked orders found. Showing results from customer master (last known route/stop).
+    Invoice, PO, and pick area will be blank on labels.
+</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('adhoc.print_labels') }}">
+    <input type="hidden" name="source" value="{{ source }}">
+    <input type="hidden" name="term" value="{{ term }}">
+
+    <div class="data-table mb-4">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="checkAll" checked></th>
+                    <th>Cust #</th>
+                    <th>Customer</th>
+                    <th>Route</th>
+                    <th>Stop</th>
+                    {% if source == 'vbatch_labels' %}
+                    <th>Invoice</th>
+                    <th>PO</th>
+                    <th>Dept</th>
+                    {% endif %}
+                    <th>Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                {% if source == 'vbatch_labels' %}
+                    {% set key = r.INVOICE_NO %}
+                    {% set default_qty = r.LABELS or 1 %}
+                {% else %}
+                    {% set key = r.CUSTOMER_NO %}
+                    {% set default_qty = 1 %}
+                {% endif %}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="selected" value="{{ key }}" class="row-check" checked>
+                    </td>
+                    <td>{{ r.CUSTOMER_NO }}</td>
+                    <td>{{ r.CUSTOMER }}</td>
+                    <td class="fw-600">{{ r.ROUTE }}</td>
+                    <td class="fw-600">{{ r.STOP }}</td>
+                    {% if source == 'vbatch_labels' %}
+                    <td>{{ r.INVOICE_NO }}</td>
+                    <td>{{ r.PO_NUM or '' }}</td>
+                    <td><span class="dept-badge">{{ r.PICK_AREA or '' }}</span></td>
+                    {% endif %}
+                    <td>
+                        <input type="number" name="qty_{{ key }}" value="{{ default_qty }}" min="1" max="99"
+                               class="form-control form-control-sm qty-input">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="submit" class="btn-print">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="6" rx="1"/><rect x="2" y="8" width="20" height="8" rx="1"/><rect x="6" y="16" width="12" height="6" rx="1"/><line x1="6" y1="11" x2="10" y2="11"/></svg>
+        Print Selected Labels
+    </button>
+</form>
+{% endif %}
+{% endblock %}
