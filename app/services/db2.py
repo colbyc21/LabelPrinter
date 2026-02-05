@@ -133,27 +133,31 @@ def get_pick_list(customer_no, region=None):
         region: Optional region/department filter (e.g., 'W', 'C')
 
     Returns:
-        List of dicts with pick list data, ordered by REGION, LOCATION
+        List of dicts with pick list data, ordered by derived region, LOCATION.
+        Region is derived from first letter of LOCATION (slot) since Route 10
+        defaults REGION to 'CC' instead of the actual pick area.
     """
     conn = get_connection()
     try:
         cursor = conn.cursor()
+        # Derive region from first letter of LOCATION since Route 10
+        # sets REGION to 'CC' instead of actual pick area
         if region:
             cursor.execute(
                 "SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
-                "DESCRIPTION, REGION, LOCATION, ORDERED, SHIPPED "
+                "DESCRIPTION, SUBSTR(LOCATION, 1, 1) AS REGION, LOCATION, ORDERED, SHIPPED "
                 "FROM longmod.picks "
-                "WHERE CUSTNO = ? AND TRIM(REGION) = ? "
-                "ORDER BY REGION, LOCATION",
+                "WHERE CUSTNO = ? AND SUBSTR(LOCATION, 1, 1) = ? "
+                "ORDER BY SUBSTR(LOCATION, 1, 1), LOCATION",
                 (customer_no, region),
             )
         else:
             cursor.execute(
                 "SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
-                "DESCRIPTION, REGION, LOCATION, ORDERED, SHIPPED "
+                "DESCRIPTION, SUBSTR(LOCATION, 1, 1) AS REGION, LOCATION, ORDERED, SHIPPED "
                 "FROM longmod.picks "
                 "WHERE CUSTNO = ? "
-                "ORDER BY REGION, LOCATION",
+                "ORDER BY SUBSTR(LOCATION, 1, 1), LOCATION",
                 (customer_no,),
             )
         columns = [desc[0] for desc in cursor.description]
@@ -163,12 +167,15 @@ def get_pick_list(customer_no, region=None):
 
 
 def get_pick_list_regions(customer_no):
-    """Get distinct regions with pick list items for a customer."""
+    """Get distinct regions with pick list items for a customer.
+
+    Region is derived from first letter of LOCATION (slot).
+    """
     conn = get_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT DISTINCT TRIM(REGION) AS REGION "
+            "SELECT DISTINCT SUBSTR(LOCATION, 1, 1) AS REGION "
             "FROM longmod.picks "
             "WHERE CUSTNO = ? "
             "ORDER BY REGION",
