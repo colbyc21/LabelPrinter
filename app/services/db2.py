@@ -130,34 +130,49 @@ def get_pick_list(customer_no, region=None):
 
     Args:
         customer_no: Customer number (e.g., 20815)
-        region: Optional region/department filter (e.g., 'W', 'C')
+        region: Optional region/department filter (e.g., 'MW' for Main Warehouse M-Z)
 
     Returns:
         List of dicts with pick list data, ordered by derived region, LOCATION.
         Region is derived from first letter of LOCATION (slot) since Route 10
         defaults REGION to 'CC' instead of the actual pick area.
+        Locations starting with M-Z are grouped as 'MW' (Main Warehouse).
     """
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        # Derive region from first letter of LOCATION since Route 10
-        # sets REGION to 'CC' instead of actual pick area
+        # Derive region from first letter of LOCATION
+        # M-Z locations grouped as 'MW' (Main Warehouse)
+        region_expr = (
+            "CASE WHEN SUBSTR(LOCATION, 1, 1) >= 'M' "
+            "THEN 'MW' ELSE SUBSTR(LOCATION, 1, 1) END"
+        )
         if region:
-            cursor.execute(
-                "SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
-                "DESCRIPTION, SUBSTR(LOCATION, 1, 1) AS REGION, LOCATION, ORDERED, SHIPPED "
-                "FROM longmod.picks "
-                "WHERE CUSTNO = ? AND SUBSTR(LOCATION, 1, 1) = ? "
-                "ORDER BY SUBSTR(LOCATION, 1, 1), LOCATION",
-                (customer_no, region),
-            )
+            if region == "MW":
+                cursor.execute(
+                    f"SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
+                    f"DESCRIPTION, {region_expr} AS REGION, LOCATION, ORDERED, SHIPPED "
+                    f"FROM longmod.picks "
+                    f"WHERE CUSTNO = ? AND SUBSTR(LOCATION, 1, 1) >= 'M' "
+                    f"ORDER BY LOCATION",
+                    (customer_no,),
+                )
+            else:
+                cursor.execute(
+                    f"SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
+                    f"DESCRIPTION, {region_expr} AS REGION, LOCATION, ORDERED, SHIPPED "
+                    f"FROM longmod.picks "
+                    f"WHERE CUSTNO = ? AND SUBSTR(LOCATION, 1, 1) = ? "
+                    f"ORDER BY LOCATION",
+                    (customer_no, region),
+                )
         else:
             cursor.execute(
-                "SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
-                "DESCRIPTION, SUBSTR(LOCATION, 1, 1) AS REGION, LOCATION, ORDERED, SHIPPED "
-                "FROM longmod.picks "
-                "WHERE CUSTNO = ? "
-                "ORDER BY SUBSTR(LOCATION, 1, 1), LOCATION",
+                f"SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
+                f"DESCRIPTION, {region_expr} AS REGION, LOCATION, ORDERED, SHIPPED "
+                f"FROM longmod.picks "
+                f"WHERE CUSTNO = ? "
+                f"ORDER BY {region_expr}, LOCATION",
                 (customer_no,),
             )
         columns = [desc[0] for desc in cursor.description]
@@ -170,12 +185,15 @@ def get_pick_list_regions(customer_no):
     """Get distinct regions with pick list items for a customer.
 
     Region is derived from first letter of LOCATION (slot).
+    Locations starting with M-Z are grouped as 'MW' (Main Warehouse).
     """
     conn = get_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT DISTINCT SUBSTR(LOCATION, 1, 1) AS REGION "
+            "SELECT DISTINCT "
+            "CASE WHEN SUBSTR(LOCATION, 1, 1) >= 'M' "
+            "THEN 'MW' ELSE SUBSTR(LOCATION, 1, 1) END AS REGION "
             "FROM longmod.picks "
             "WHERE CUSTNO = ? "
             "ORDER BY REGION",

@@ -99,20 +99,23 @@ def generate_pick_list_labels(items, region):
 
     Args:
         items: List of dicts from longmod.picks query
-        region: Department/region code (e.g., 'W', 'C')
+        region: Department/region code (e.g., 'W', 'C', 'MW' for Main Warehouse)
 
     Returns:
-        ZPL string for all pick list labels (multiple labels if > 10 items)
+        ZPL string for all pick list labels (multiple labels if > 8 items)
     """
     if not items:
         return ""
 
-    # Landscape 4x6 at 203 DPI: 1218 x 812 dots
-    # ^POI = print orientation inverted (landscape)
-    # Fit ~10 rows per label with small font
+    # Landscape 4x6 at 203 DPI
+    # Print along the 6" width (1218 dots) with 4" height (812 dots)
+    # Using ^PON (normal) with swapped dimensions for true landscape
 
-    ROWS_PER_LABEL = 10
+    ROWS_PER_LABEL = 8
     labels = []
+
+    # Display name for region
+    region_name = "Main Warehouse" if region == "MW" else f"DEPT {region}"
 
     for page_start in range(0, len(items), ROWS_PER_LABEL):
         page_items = items[page_start:page_start + ROWS_PER_LABEL]
@@ -121,50 +124,50 @@ def generate_pick_list_labels(items, region):
 
         zpl = (
             "^XA\n"
-            "^POI\n"  # Landscape orientation
-            "^PW1218\n"  # Print width for 6 inch
-            "^LL812\n"  # Label length for 4 inch
-            # Header
-            "^CF0,40\n"
-            f"^FO30,30^FDDEPT {region} PICK LIST^FS\n"
-            f"^FO950,30^FDPage {page_num}/{total_pages}^FS\n"
-            "^FO30,75^GB1158,2,2^FS\n"
-            # Column headers
-            "^CF0,22\n"
-            "^FO30,90^FDSLOT^FS\n"
-            "^FO130,90^FDORD^FS\n"
-            "^FO190,90^FDSHP^FS\n"
-            "^FO250,90^FDPO^FS\n"
-            "^FO420,90^FDLINE^FS\n"
-            "^FO480,90^FDDESCRIPTION^FS\n"
-            "^FO900,90^FDPK^FS\n"
-            "^FO980,90^FDSIZE^FS\n"
-            "^FO30,115^GB1158,2,2^FS\n"
-            # Data rows
-            "^CF0,20\n"
+            "^PON\n"  # Normal orientation
+            "^PW812\n"  # Print width = 4 inch (short side)
+            "^LL1218\n"  # Label length = 6 inch (long side feeds through)
+            # Header - larger font
+            "^CF0,50\n"
+            f"^FO30,40^FD{region_name} PICK LIST^FS\n"
+            f"^FO650,40^FDPage {page_num}/{total_pages}^FS\n"
+            "^FO30,100^GB752,3,3^FS\n"
+            # Column headers - larger font
+            "^CF0,28\n"
+            "^FO30,120^FDSLOT^FS\n"
+            "^FO120,120^FDORD^FS\n"
+            "^FO175,120^FDSHP^FS\n"
+            "^FO230,120^FDPO^FS\n"
+            "^FO370,120^FDLN^FS\n"
+            "^FO410,120^FDDESCRIPTION^FS\n"
+            "^FO680,120^FDPK^FS\n"
+            "^FO730,120^FDSIZE^FS\n"
+            "^FO30,155^GB752,2,2^FS\n"
+            # Data rows - larger font
+            "^CF0,26\n"
         )
 
-        y = 130
-        row_height = 65
+        y = 175
+        row_height = 125
         for item in page_items:
             slot = str(item.get("LOCATION", "")).strip()
             ordered = str(int(item.get("ORDERED", 0) or 0))
             shipped = str(int(item.get("SHIPPED", 0) or 0))
-            custpo = str(item.get("CUSTPO", "")).strip()[:15]
+            custpo = str(item.get("CUSTPO", "")).strip()[:12]
             lineno = str(int(item.get("LINENO", 0) or 0))
-            desc = str(item.get("DESCRIPTION", "")).strip()[:35]
+            desc = str(item.get("DESCRIPTION", "")).strip()[:22]
             pk = str(item.get("QTY2", "")).strip()
-            size = str(item.get("SIZE", "")).strip()[:8]
+            size = str(item.get("SIZE", "")).strip()[:6]
 
             zpl += (
                 f"^FO30,{y}^FD{slot}^FS\n"
-                f"^FO130,{y}^FD{ordered}^FS\n"
-                f"^FO190,{y}^FD{shipped}^FS\n"
-                f"^FO250,{y}^FD{custpo}^FS\n"
-                f"^FO420,{y}^FD{lineno}^FS\n"
-                f"^FO480,{y}^FD{desc}^FS\n"
-                f"^FO900,{y}^FD{pk}^FS\n"
-                f"^FO980,{y}^FD{size}^FS\n"
+                f"^FO120,{y}^FD{ordered}^FS\n"
+                f"^FO175,{y}^FD{shipped}^FS\n"
+                f"^FO230,{y}^FD{custpo}^FS\n"
+                f"^FO370,{y}^FD{lineno}^FS\n"
+                f"^FO410,{y}^FD{desc}^FS\n"
+                f"^FO680,{y}^FD{pk}^FS\n"
+                f"^FO730,{y}^FD{size}^FS\n"
             )
             y += row_height
 
