@@ -123,3 +123,57 @@ def search_oneoff_customers(term):
         return [_strip_row(columns, row) for row in cursor.fetchall()]
     finally:
         conn.close()
+
+
+def get_pick_list(customer_no, region=None):
+    """Get pick list items from longmod.picks for a customer.
+
+    Args:
+        customer_no: Customer number (e.g., 20815)
+        region: Optional region/department filter (e.g., 'W', 'C')
+
+    Returns:
+        List of dicts with pick list data, ordered by REGION, LOCATION
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        if region:
+            cursor.execute(
+                "SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
+                "DESCRIPTION, REGION, LOCATION, ORDERED, SHIPPED "
+                "FROM longmod.picks "
+                "WHERE CUSTNO = ? AND TRIM(REGION) = ? "
+                "ORDER BY REGION, LOCATION",
+                (customer_no, region),
+            )
+        else:
+            cursor.execute(
+                "SELECT CUSTNO, INVOICE, LINENO, CUSTPO, SKU, QTY2, SIZE, "
+                "DESCRIPTION, REGION, LOCATION, ORDERED, SHIPPED "
+                "FROM longmod.picks "
+                "WHERE CUSTNO = ? "
+                "ORDER BY REGION, LOCATION",
+                (customer_no,),
+            )
+        columns = [desc[0] for desc in cursor.description]
+        return [_strip_row(columns, row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_pick_list_regions(customer_no):
+    """Get distinct regions with pick list items for a customer."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT TRIM(REGION) AS REGION "
+            "FROM longmod.picks "
+            "WHERE CUSTNO = ? "
+            "ORDER BY REGION",
+            (customer_no,),
+        )
+        return [row.REGION for row in cursor.fetchall()]
+    finally:
+        conn.close()

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash
 from app.services.printer import get_printer, send_zpl
-from app.services.zpl import generate_labels
+from app.services.zpl import generate_labels, generate_pick_list_labels
 
 bp = Blueprint("batch", __name__)
 
@@ -86,6 +86,61 @@ def print_labels():
     try:
         send_zpl(printer["ip"], zpl_all)
         flash(f"Sent {label_count} label(s) to {printer_name}.", "success")
+    except Exception as e:
+        flash(f"Print error: {e}", "danger")
+
+    return redirect(url_for("batch.review_labels", route=route, dept=dept))
+
+
+@bp.route("/print-pick-list", methods=["POST"])
+def print_pick_list():
+    """Print pick list labels for customer 20815."""
+    printer_name = session.get("printer")
+    if not printer_name:
+        flash("No printer selected.", "danger")
+        return redirect(url_for("batch.select_route"))
+
+    printer = get_printer(printer_name)
+    if not printer:
+        flash("Selected printer not found.", "danger")
+        return redirect(url_for("batch.select_route"))
+
+    route = request.form.get("route", "")
+    dept = request.form.get("dept", "")
+
+    from app.services import db2
+
+    # Get all regions for customer 20815 and print pick lists
+    try:
+        regions = db2.get_pick_list_regions(20815)
+    except Exception as e:
+        flash(f"Database error: {e}", "danger")
+        return redirect(url_for("batch.review_labels", route=route, dept=dept))
+
+    if not regions:
+        flash("No pick list items found for customer 20815.", "warning")
+        return redirect(url_for("batch.review_labels", route=route, dept=dept))
+
+    zpl_all = ""
+    label_count = 0
+
+    for region in regions:
+        try:
+            items = db2.get_pick_list(20815, region)
+            if items:
+                zpl_all += generate_pick_list_labels(items, region)
+                # Count labels (10 items per label)
+                label_count += (len(items) + 9) // 10
+        except Exception as e:
+            flash(f"Error getting pick list for region {region}: {e}", "danger")
+
+    if not zpl_all:
+        flash("No pick list labels to print.", "warning")
+        return redirect(url_for("batch.review_labels", route=route, dept=dept))
+
+    try:
+        send_zpl(printer["ip"], zpl_all)
+        flash(f"Sent {label_count} pick list label(s) to {printer_name}.", "success")
     except Exception as e:
         flash(f"Print error: {e}", "danger")
 
