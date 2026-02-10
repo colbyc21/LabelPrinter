@@ -5,7 +5,7 @@ After=network.target
 [Service]
 User=long
 WorkingDirectory=/opt/labelprinter
-ExecStart=/opt/labelprinter/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 run:app
+ExecStart=/opt/labelprinter/venv/bin/gunicorn -w 2 -b 0.0.0.0:8080 run:app
 Restart=always
 RestartSec=5
 EnvironmentFile=/opt/labelprinter/.env
