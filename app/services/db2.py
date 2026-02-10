@@ -181,6 +181,37 @@ def get_pick_list(customer_no, region=None):
         conn.close()
 
 
+def get_label_counts_for_20815_by_invoice(customer_no):
+    """Calculate label counts for customer 20815 by invoice based on picks.
+
+    Rules:
+    - M-Z locations (Main Warehouse): 1 label per unit shipped
+    - All other locations: 1 label per 6 units shipped (rounded up)
+
+    Returns:
+        Dict mapping invoice number to label count.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        # Calculate labels per invoice: M-Z = 1 per unit, others = ceil(shipped/6)
+        cursor.execute(
+            "SELECT INVOICE, "
+            "SUM(CASE WHEN SUBSTR(LOCATION, 1, 1) >= 'M' THEN SHIPPED "
+            "ELSE CEILING(CAST(SHIPPED AS DECIMAL(10,2)) / 6) END) AS LABEL_COUNT "
+            "FROM longmod.picks "
+            "WHERE CUSTNO = ? "
+            "GROUP BY INVOICE",
+            (customer_no,),
+        )
+        return {
+            str(row.INVOICE).strip(): int(row.LABEL_COUNT or 1)
+            for row in cursor.fetchall()
+        }
+    finally:
+        conn.close()
+
+
 def get_pick_list_regions(customer_no):
     """Get distinct regions with pick list items for a customer.
 

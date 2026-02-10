@@ -27,6 +27,8 @@ def generate_label(data, label_number=1, total_labels=1):
     if customer_no == "20815":
         zpl = (
             "^XA\n"
+            "^FWN\n"  # Reset field orientation to normal
+            "^PON\n"  # Print orientation normal
             "^CF0,80\n"
             f"^FO50,30^FDPO: {po}^FS\n"
             "^FO50,120^GB700,4,4^FS\n"
@@ -48,6 +50,8 @@ def generate_label(data, label_number=1, total_labels=1):
         # Standard layout
         zpl = (
             "^XA\n"
+            "^FWN\n"  # Reset field orientation to normal
+            "^PON\n"  # Print orientation normal
             "^CF0,130\n"
             f"^FO50,50^FDRT: {route}^FS\n"
             f"^FO450,50^FDST: {stop}^FS\n"
@@ -95,23 +99,21 @@ def generate_labels(data, total_labels=None):
 
 
 def generate_pick_list_labels(items, region):
-    """Generate ZPL for pick list labels in landscape 4x6 format.
+    """Generate ZPL for pick list labels on 4x6 format.
 
     Args:
-        items: List of dicts from longmod.picks query
+        items: List of dicts from longmod.picks query (should be pre-sorted)
         region: Department/region code (e.g., 'W', 'C', 'MW' for Main Warehouse)
 
     Returns:
-        ZPL string for all pick list labels (multiple labels if > 8 items)
+        ZPL string for all pick list labels (multiple labels if > 12 items)
     """
     if not items:
         return ""
 
-    # Landscape 4x6 at 203 DPI
-    # Print along the 6" width (1218 dots) with 4" height (812 dots)
-    # Using ^PON (normal) with swapped dimensions for true landscape
-
-    ROWS_PER_LABEL = 8
+    # Portrait 4x6 label at 203 DPI
+    # 4" = 812 dots wide, 6" = 1218 dots tall
+    ROWS_PER_LABEL = 12
     labels = []
 
     # Display name for region
@@ -124,50 +126,52 @@ def generate_pick_list_labels(items, region):
 
         zpl = (
             "^XA\n"
-            "^PON\n"  # Normal orientation
-            "^PW812\n"  # Print width = 4 inch (short side)
-            "^LL1218\n"  # Label length = 6 inch (long side feeds through)
-            # Header - larger font
-            "^CF0,50\n"
-            f"^FO30,40^FD{region_name} PICK LIST^FS\n"
-            f"^FO650,40^FDPage {page_num}/{total_pages}^FS\n"
-            "^FO30,100^GB752,3,3^FS\n"
-            # Column headers - larger font
-            "^CF0,28\n"
-            "^FO30,120^FDSLOT^FS\n"
-            "^FO120,120^FDORD^FS\n"
-            "^FO175,120^FDSHP^FS\n"
-            "^FO230,120^FDPO^FS\n"
-            "^FO370,120^FDLN^FS\n"
-            "^FO410,120^FDDESCRIPTION^FS\n"
-            "^FO680,120^FDPK^FS\n"
-            "^FO730,120^FDSIZE^FS\n"
-            "^FO30,155^GB752,2,2^FS\n"
-            # Data rows - larger font
-            "^CF0,26\n"
+            "^FWN\n"  # Reset field orientation to normal (no rotation)
+            "^PON\n"  # Print orientation normal
+            # Header at top
+            "^CF0,35\n"
+            f"^FO20,20^FD{region_name} PICK LIST^FS\n"
+            f"^FO680,20^FD{page_num}/{total_pages}^FS\n"
+            "^FO20,60^GB770,3,3^FS\n"
+            # Column headers - tighter layout for 4" (812 dots)
+            "^CF0,18\n"
+            "^FO20,70^FDSLOT^FS\n"
+            "^FO85,70^FDINV^FS\n"
+            "^FO150,70^FDORD^FS\n"
+            "^FO185,70^FDSHP^FS\n"
+            "^FO220,70^FDPO^FS\n"
+            "^FO330,70^FDLN^FS\n"
+            "^FO360,70^FDDESCRIPTION^FS\n"
+            "^FO590,70^FDPK^FS\n"
+            "^FO630,70^FDSIZE^FS\n"
+            "^FO20,90^GB770,2,2^FS\n"
+            # Data rows
+            "^CF0,18\n"
         )
 
-        y = 175
-        row_height = 125
+        y = 100  # Starting vertical position for first data row
+        row_height = 24
         for item in page_items:
-            slot = str(item.get("LOCATION", "")).strip()
+            slot = str(item.get("LOCATION", "")).strip()[:7]
+            invoice = str(item.get("INVOICE", "")).strip()[:6]
             ordered = str(int(item.get("ORDERED", 0) or 0))
             shipped = str(int(item.get("SHIPPED", 0) or 0))
-            custpo = str(item.get("CUSTPO", "")).strip()[:12]
+            custpo = str(item.get("CUSTPO", "")).strip()[:10]
             lineno = str(int(item.get("LINENO", 0) or 0))
-            desc = str(item.get("DESCRIPTION", "")).strip()[:22]
-            pk = str(item.get("QTY2", "")).strip()
-            size = str(item.get("SIZE", "")).strip()[:6]
+            desc = str(item.get("DESCRIPTION", "")).strip()[:18]
+            pk = str(item.get("QTY2", "")).strip()[:4]
+            size = str(item.get("SIZE", "")).strip()[:10]
 
             zpl += (
-                f"^FO30,{y}^FD{slot}^FS\n"
-                f"^FO120,{y}^FD{ordered}^FS\n"
-                f"^FO175,{y}^FD{shipped}^FS\n"
-                f"^FO230,{y}^FD{custpo}^FS\n"
-                f"^FO370,{y}^FD{lineno}^FS\n"
-                f"^FO410,{y}^FD{desc}^FS\n"
-                f"^FO680,{y}^FD{pk}^FS\n"
-                f"^FO730,{y}^FD{size}^FS\n"
+                f"^FO20,{y}^FD{slot}^FS\n"
+                f"^FO85,{y}^FD{invoice}^FS\n"
+                f"^FO150,{y}^FD{ordered}^FS\n"
+                f"^FO185,{y}^FD{shipped}^FS\n"
+                f"^FO220,{y}^FD{custpo}^FS\n"
+                f"^FO330,{y}^FD{lineno}^FS\n"
+                f"^FO360,{y}^FD{desc}^FS\n"
+                f"^FO590,{y}^FD{pk}^FS\n"
+                f"^FO630,{y}^FD{size}^FS\n"
             )
             y += row_height
 

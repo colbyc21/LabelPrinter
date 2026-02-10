@@ -35,6 +35,18 @@ def review_labels(route):
     if not customers:
         flash(f"No orders found for route {route}.", "warning")
 
+    # Calculate labels for customer 20815 from picks table (per invoice)
+    labels_20815_by_invoice = None
+    for cust in customers:
+        if str(cust.get("CUSTOMER_NO", "")).strip() == "20815":
+            if labels_20815_by_invoice is None:
+                try:
+                    labels_20815_by_invoice = db2.get_label_counts_for_20815_by_invoice(20815)
+                except Exception:
+                    labels_20815_by_invoice = {}
+            invoice_no = str(cust.get("INVOICE_NO", "")).strip()
+            cust["LABELS"] = labels_20815_by_invoice.get(invoice_no, 1)
+
     return render_template(
         "batch/review_labels.html", customers=customers, route=route, dept=dept
     )
@@ -73,9 +85,23 @@ def print_labels():
     zpl_all = ""
     label_count = 0
 
+    # For customer 20815, calculate labels from picks table (per invoice)
+    labels_20815_by_invoice = None
+
     for idx, cust in enumerate(customers):
         if str(idx) in selected_set:
-            labels = int(cust.get("LABELS", 1) or 1)
+            cust_no = str(cust.get("CUSTOMER_NO", "")).strip()
+            if cust_no == "20815":
+                # Calculate labels from picks: M-Z=1 per unit, others=1 per 6 units
+                if labels_20815_by_invoice is None:
+                    try:
+                        labels_20815_by_invoice = db2.get_label_counts_for_20815_by_invoice(20815)
+                    except Exception:
+                        labels_20815_by_invoice = {}
+                invoice_no = str(cust.get("INVOICE_NO", "")).strip()
+                labels = labels_20815_by_invoice.get(invoice_no, 1)
+            else:
+                labels = int(cust.get("LABELS", 1) or 1)
             zpl_all += generate_labels(cust, total_labels=labels)
             label_count += labels
 
@@ -129,8 +155,8 @@ def print_pick_list():
             items = db2.get_pick_list(20815, region)
             if items:
                 zpl_all += generate_pick_list_labels(items, region)
-                # Count labels (10 items per label)
-                label_count += (len(items) + 9) // 10
+                # Count labels (12 items per label)
+                label_count += (len(items) + 11) // 12
         except Exception as e:
             flash(f"Error getting pick list for region {region}: {e}", "danger")
 
