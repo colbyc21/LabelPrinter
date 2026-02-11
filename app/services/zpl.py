@@ -1,3 +1,11 @@
+from datetime import date, timedelta
+
+
+def _get_prod_date():
+    """Return production date (tomorrow) as MM/DD/YY."""
+    return (date.today() + timedelta(days=1)).strftime("%m/%d/%y")
+
+
 def generate_label(data, label_number=1, total_labels=1):
     """Generate ZPL for a single 4x6 shipping label at 203 DPI.
 
@@ -20,6 +28,7 @@ def generate_label(data, label_number=1, total_labels=1):
     invoice = str(data.get("INVOICE_NO", "")).strip()
     po = str(data.get("PO_NUM", "")).strip()
     pick_area = str(data.get("PICK_AREA", "")).strip()
+    prod_date = _get_prod_date()
 
     city_state = f"{city}, {state}" if city and state else city or state
 
@@ -44,6 +53,7 @@ def generate_label(data, label_number=1, total_labels=1):
             "^CF0,35\n"
             f"^FO50,450^FDInvoice: {invoice}^FS\n"
             f"^FO50,500^FDPick: {pick_area}^FS\n"
+            f"^FO500,500^FDProd: {prod_date}^FS\n"
             "^XZ\n"
         )
     else:
@@ -70,6 +80,8 @@ def generate_label(data, label_number=1, total_labels=1):
             zpl += f"^FO450,410^FDPO: {po}^FS\n"
         if pick_area:
             zpl += f"^FO50,460^FDPick: {pick_area}^FS\n"
+
+        zpl += f"^FO500,460^FDProd: {prod_date}^FS\n"
 
         zpl += (
             "^FO50,520^GB700,4,4^FS\n"
@@ -131,6 +143,7 @@ def generate_pick_list_labels(items, region):
             # Header at top
             "^CF0,35\n"
             f"^FO20,20^FD{region_name} PICK LIST^FS\n"
+            f"^FO500,20^FDProd: {_get_prod_date()}^FS\n"
             f"^FO680,20^FD{page_num}/{total_pages}^FS\n"
             "^FO20,60^GB770,3,3^FS\n"
             # Column headers - tighter layout for 4" (812 dots)
